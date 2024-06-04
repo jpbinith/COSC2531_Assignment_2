@@ -60,11 +60,10 @@ class BasicCustomer(Customer):
 
 class VIPCustomer(Customer):
     __reward_rate = 1.0
-    __discount_rate = 0.08
 
     def __init__(self, ID, name, reward, discount_rate=None):
         super().__init__(ID, name, reward)
-        VIPCustomer.__discount_rate = discount_rate if discount_rate is not None else VIPCustomer.__discount_rate
+        self.__discount_rate = discount_rate if discount_rate is not None else 0.08
     
     def get_discount(self, total_cost):
         return total_cost * self.__discount_rate
@@ -84,9 +83,8 @@ class VIPCustomer(Customer):
     def set_reward_rate(rate):
         VIPCustomer.__reward_rate = rate
     
-    @staticmethod
-    def set_discount_rate(rate):
-        VIPCustomer.__discount_rate = rate
+    def set_discount_rate(self, rate):
+        self.__discount_rate = rate
 
 class Product:
     def __init__(self, ID, name, price, dr_prescription):
@@ -151,12 +149,14 @@ class Order:
         reward = self.__customer.get_reward(original_cost)
         discount = self.__customer.get_discount(original_cost)
         final_cost = original_cost - discount
+        reward_discount = 0
         if (final_cost >= 10 and self.__customer.reward >= 100):
-            final_cost -= 10
+            reward_discount = 10
+            final_cost -= reward_discount
             self.__customer.reward = self.__customer.reward - 100
         self.__customer.update_reward(reward)
 
-        return original_cost, discount, final_cost, reward
+        return original_cost, discount, final_cost, reward, reward_discount
     
 class Validations:
 
@@ -195,9 +195,8 @@ class Validations:
             raise InvalidRewardRateError(f"Invalid reward rate {reward_rate}. Enter a valid reward rate.")
     
     @staticmethod
-    def validate_VIP_customer(customer, find_customer):
-        customer_obj = find_customer(customer)
-        if customer_obj == None or customer_obj.name[0] == 'B':
+    def validate_VIP_customer(customer):
+        if customer == None or customer.name[0] == 'B':
             raise InvalidVIPCustomerError("Invalid VIP customer id or name. Enter a valid customer naim or ID")
     
     @staticmethod
@@ -217,6 +216,7 @@ class Records:
     def __init__(self):
         self.__customers = []
         self.__products = []
+        self.__orders = []
 
     @staticmethod
     def get_next_customer_number():
@@ -241,6 +241,10 @@ class Records:
     @property
     def products(self):
         return self.__products
+
+    @property
+    def orders(self):
+        return self.__orders
     
     def read_customers(self, filename):
         with open(filename, 'r') as file:
@@ -382,8 +386,7 @@ class Operations:
 
     def make_purchase(self):
         try:
-            customer_name = input("Enter customer name: ")
-            
+            customer_name = self.read_customer_name()
             product_List = self.read_product_list()
             
             quantity_list = self.read_quantity_list(len(product_List))
@@ -399,19 +402,23 @@ class Operations:
 
 
             order = Order(customer, product_List, quantity_list)
-            original_cost, discount, final_cost, reward = order.compute_cost()
+            original_cost, discount, final_cost, reward, reward_discount = order.compute_cost()
 
             if isinstance(customer, VIPCustomer):
                 print("\n------------------------------ Receipt ------------------------------")
                 print(f"Name: {customer_name}")
-                print(f"Product: {product.name}")
-                print(f"Unit Price: {product.price} (AUD)")
-                print(f"Quantity: {quantity}")
+                for product, quantity in zip(product_List, quantity_list):
+                    print(f"Product: {product.name}")
+                    print(f"Unit Price: {product.price} (AUD)")
+                    print(f"Quantity: {quantity}")
                 print(f"Original cost: {original_cost} (AUD)")
                 print(f"Discount: {discount} (AUD)")
                 print("---------------------------------------------------------------------")
-                print(f"Total cost: {final_cost} (AUD)")
+                print(f"Total cost: {final_cost + reward_discount} (AUD)")
                 print(f"Earned reward: {reward}")
+                if (reward_discount > 0):
+                    print(f"Reward discount: {reward_discount}")
+                    print(f"Total after reward discount: {final_cost}")
             else:
                 print("\n------------------------------ Receipt ------------------------------")
                 print(f"Name: {customer_name}")
@@ -420,8 +427,11 @@ class Operations:
                     print(f"Unit Price: {product.price} (AUD)")
                     print(f"Quantity: {quantity}")
                 print("---------------------------------------------------------------------")
-                print(f"Total cost: {final_cost} (AUD)")
+                print(f"Total cost: {final_cost + reward_discount} (AUD)")
                 print(f"Earned reward: {reward}")
+                if (reward_discount > 0):
+                    print(f"Reward discount: {reward_discount}")
+                    print(f"Total after reward discount: {final_cost}")
     
         except InvalidNameError as e:
             print(e)
@@ -460,11 +470,18 @@ class Operations:
                     final_quantity_list.append(int(quantity))
             except InvalidQuantityError as e:
                 print(e)
-                continue
             except InvalidQuantitiesError as e:
                 print(e)
-                continue
             return final_quantity_list
+        
+    def read_customer_name(self):
+        while True:
+            try:
+                customer_name = input("Enter customer name: ")
+                Validations.validate_customer_name(customer_name)
+                return customer_name
+            except InvalidNameError as e:
+                print(e)
 
     def read_product_list(self):
         while True:
@@ -483,13 +500,15 @@ class Operations:
                                 prescription = input(f"Do you have a doctor's prescription for {product_name}? (y/n): ").lower()
                                 Validations.validate_prescription_status(prescription)
                                 if prescription == 'n':
-                                    print(f"You cannot purchase this product {product_name} without a doctor's prescription.")
-                                    break
+                                    raise NoPrescriptionError(f"You cannot purchase this product {product_name} without a doctor's prescription.")
                                 else:
                                     product_List.append(product)
                                     break
                             except InvalidPrescriptionError as e:
                                 print(e)
+                            except NoPrescriptionError as e:
+                                print(e)
+                                break
                     else:
                         product_List.append(product)
 
@@ -511,14 +530,18 @@ class Operations:
         while True:
             try:
                 customer = input("Enter VIP customer id or name: ")
-                Validations.validate_VIP_customer(customer, self.records.find_customer)
+                customer_obj = self.records.find_customer(customer)
+                Validations.validate_VIP_customer(customer_obj)
+                break
+            except InvalidVIPCustomerError as e:
+                print(e)
+        while True:
+            try:
                 discount_rate = input("Enter discount rate: ")
                 Validations.validate_discount_rate(discount_rate)
-                VIPCustomer.set_discount_rate(discount_rate)
+                customer_obj.set_discount_rate(discount_rate)
                 break
             except InvalidRewardRateError as e:
-                print(e)
-            except InvalidVIPCustomerError as e:
                 print(e)
 
 operations = Operations()
