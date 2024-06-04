@@ -3,6 +3,9 @@
 # Student ID: 4064801
 
 import sys
+from datetime import datetime
+
+# Customer class
 class Customer:
     def __init__(self, ID, name, reward):
         Validations.validate_customer_name(name)
@@ -38,6 +41,10 @@ class Customer:
     def display_info(self):
         pass
 
+    def write_info(self):
+        pass
+
+# Basic customer class
 class BasicCustomer(Customer):
     __reward_rate = 1.0
 
@@ -53,6 +60,9 @@ class BasicCustomer(Customer):
     
     def display_info(self):
         print(f"ID: {self.ID}, Name: {self.name}, Reward: {self.reward}, Reward Rate: {self.__reward_rate}")
+
+    def write_info(self):
+        return f'{self.ID}, {self.name}, {self.__reward_rate}, {str(self.reward)}'
 
     @staticmethod
     def set_reward_rate(rate):
@@ -78,6 +88,9 @@ class VIPCustomer(Customer):
     
     def display_info(self):
         print(f"ID: {self.ID}, Name: {self.name}, Reward: {self.reward}, Reward Rate: {self.__reward_rate}, Discount Rate: {self.__discount_rate}")
+    
+    def write_info(self):
+        return f'{self.ID}, {self.name}, {self.__reward_rate}, {self.__discount_rate}, {str(self.reward)}'
     
     @staticmethod
     def set_reward_rate(rate):
@@ -124,6 +137,9 @@ class Product:
     def display_info(self):
         print(f"ID: {self.ID}, Name: {self.name}, Price: {self.price} AUD, Doctor's Prescription: {self.dr_prescription}")
 
+    def write_info(self):
+        return f'{self.ID}, {self.name}, {self.price}, {self.dr_prescription}'
+
 class Bundle(Product):
     def __init__(self, ID, name, products):
         super().__init__(ID, name, 0, 'y' if any(p.dr_prescription == 'y' for p in products) else 'n')
@@ -138,11 +154,25 @@ class Bundle(Product):
         product_names = ", ".join(p.name for p in self.__products)
         print(f"ID: {self.ID}, Name: {self.name}, Price: {self.__price} AUD, Doctor's Prescription: {self.dr_prescription}, Products: {product_names}")
 
+    def write_info(self):
+        products = ''
+        for product in self.__products:
+            products += product.ID + ','
+        return f'{self.ID}, {self.name}, {self.price}, {products[:-1]}'
+
 class Order:
-    def __init__(self, customer, product_list, quantity_list):
+
+    def __init__(self, customer, product_list, quantity_list, total_cost=None, earned_rewards=None, date=None):
         self.__customer = customer
         self.__product_list = product_list
         self.__quantity_list = quantity_list
+        self.__total_cost = total_cost
+        self.__earned_rewards = earned_rewards
+        self.__date = date
+
+    @property
+    def customer(self):
+        return self.__customer
     
     def compute_cost(self):
         original_cost = sum( product.price * quantity for product, quantity in zip(self.__product_list, self.__quantity_list))
@@ -156,19 +186,38 @@ class Order:
             self.__customer.reward = self.__customer.reward - 100
         self.__customer.update_reward(reward)
 
+        # Get the current date and time
+        now = datetime.now()
+
+        self.__total_cost = final_cost
+        self.__earned_rewards = reward
+        self.__date = now.strftime("%d/%m/%Y %H:%M:%S")
+
         return original_cost, discount, final_cost, reward, reward_discount
+    
+    def display_info(self):
+        products_str = ''
+        for product, quantity in zip(self.__product_list, self.__quantity_list):
+            products_str += f'{product} x {quantity}, ' 
+        print(f"Customer: {self.__customer.name},   Products: { products_str }  Total cost: {self.__total_cost},   Earned rewards: {self.__earned_rewards},   Date: {self.__date}")
+
+    def write_info(self):
+        products_str = ''
+        for product, quantity in zip(self.__product_list, self.__quantity_list):
+            products_str += f'{product}, {str(quantity)}, ' 
+        return f'{self.__customer.name}, {products_str}{self.__total_cost}, {self.__earned_rewards}, {self.__date}'
     
 class Validations:
 
     @staticmethod
     def validate_customer_name(name):
         if not name.isalpha():
-            raise InvalidNameError("Customer name must contain only alphabet characters.")
+            raise InvalidNameException("Customer name must contain only alphabet characters.")
 
     @staticmethod
     def validate_prescription_status(prescription):
         if prescription not in ['y', 'n']:
-            raise InvalidPrescriptionError("Invalid input. Please enter 'y' or 'n'.")
+            raise InvalidPrescriptionException("Invalid input. Please enter 'y' or 'n'.")
         return prescription
     
     @staticmethod
@@ -176,38 +225,44 @@ class Validations:
         try:
             float(price)
             if float(price) < 0:
-                raise InvalidPriceError(f"Invalid price input {price}. Enter a valid price.")
-        except ValueError:
-            raise InvalidPriceError(f"Invalid price input {price}. Enter a valid price.")
+                raise InvalidPriceException(f"Invalid price input {price}. Enter a valid price.")
+        except ValueException:
+            raise InvalidPriceException(f"Invalid price input {price}. Enter a valid price.")
         
     @staticmethod
     def validate_product_input_format(product_info_list):
         if len(product_info_list) != 3:
-            raise InvalidProductInfoFormetError("Invalid product input format. Enter the products again")
+            raise InvalidProductInfoFormetException("Invalid product input format. Enter the products again")
         
     @staticmethod
     def validate_reward_rate(reward_rate):
         try:
             float(reward_rate)
             if float(reward_rate) <= 0:
-                raise InvalidRewardRateError(f"Invalid reward rate {reward_rate}. Enter a valid reward rate.")
-        except ValueError:
-            raise InvalidRewardRateError(f"Invalid reward rate {reward_rate}. Enter a valid reward rate.")
+                raise InvalidRewardRateException(f"Invalid reward rate {reward_rate}. Enter a valid reward rate.")
+        except ValueException:
+            raise InvalidRewardRateException(f"Invalid reward rate {reward_rate}. Enter a valid reward rate.")
     
     @staticmethod
     def validate_VIP_customer(customer):
         if customer == None or customer.name[0] == 'B':
-            raise InvalidVIPCustomerError("Invalid VIP customer id or name. Enter a valid customer naim or ID")
+            raise InvalidVIPCustomerException("Invalid VIP customer id or name. Enter a valid customer naim or ID")
     
     @staticmethod
     def validate_discount_rate(discount_rate):
         try:
             float(discount_rate)
             if float(discount_rate) <= 0:
-                raise InvalidRewardRateError(f"Invalid discount rate {discount_rate}. Enter a valid discount rate.")
-        except ValueError:
-            raise InvalidRewardRateError(f"Invalid discount rate {discount_rate}. Enter a valid discount rate.")
+                raise InvalidRewardRateException(f"Invalid discount rate {discount_rate}. Enter a valid discount rate.")
+        except ValueException:
+            raise InvalidRewardRateException(f"Invalid discount rate {discount_rate}. Enter a valid discount rate.")
 
+class Utill:
+
+    @staticmethod
+    def pairwise(iterable):
+        a = iter(iterable)
+        return zip(a, a)
 
 class Records:
     __next_customer_number = 1
@@ -252,33 +307,43 @@ class Records:
                 data = [d.strip() for d in line.strip().split(',')]
                 self.set_next_customer_number(int(''.join(filter(lambda i: i.isdigit(), data[0]))) + 1)
                 if data[0][0] == 'B':
-                    customer = BasicCustomer(data[0], data[1], int(data[2]))
+                    customer = BasicCustomer(data[0], data[1], int(data[3]))
                 elif data[0][0] == 'V':
                     customer = VIPCustomer(data[0], data[1], int(data[4]), float(data[3]))
                 self.__customers.append(customer)
 
     def read_products(self, filename):
-        try:
-            with open(filename, 'r') as file:
-                for line in file:
-                    data = [d.strip() for d in line.strip().split(',')]
-                    self.set_next_product_number(int(''.join(filter(lambda i: i.isdigit(), data[0]))) + 1)
-                    if data[0][0] == 'B':
-                        product_ids = data[2:]
-                        products = []
-                        for pid in product_ids:
-                            searched_product = self.find_product(pid)
-                            if (searched_product != None):
-                                products.append(searched_product)
-                            else:
-                                raise InvalidProductError(f"Product {pid} not found. Check the product file.")
-                        product = Bundle(data[0], data[1], products)
-                    else:
-                        product = Product(data[0], data[1], float(data[2]), data[3])
-                    self.__products.append(product)
-        except InvalidProductError as e:
-            print(e)
-            sys.exit();
+        with open(filename, 'r') as file:
+            for line in file:
+                data = [d.strip() for d in line.strip().split(',')]
+                self.set_next_product_number(int(''.join(filter(lambda i: i.isdigit(), data[0]))) + 1)
+                if data[0][0] == 'B':
+                    product_ids = data[2:]
+                    products = []
+                    for pid in product_ids:
+                        searched_product = self.find_product(pid)
+                        if (searched_product != None):
+                            products.append(searched_product)
+                        else:
+                            raise InvalidProductException(f"Product {pid} not found. Check the product file.")
+                    product = Bundle(data[0], data[1], products)
+                else:
+                    product = Product(data[0], data[1], float(data[2]), data[3])
+                self.__products.append(product)
+    
+    def read_orders(self, filename):
+        with open(filename, 'r') as file:
+            for line in file:
+                data = [d.strip() for d in line.strip().split(',')]
+                item_list = data[1:-3]
+                product_list = []
+                quantity_list = []
+                for product, quantity in Utill.pairwise(item_list):
+                    product_list.append(product)
+                    quantity_list.append(quantity)
+                customer = self.find_customer(data[0])
+                order = Order(customer, product_list, quantity_list, data[-3], data[-2], data[-1])
+                self.__orders.append(order)
 
     def find_customer(self, search_value):
         for customer in self.__customers:
@@ -309,49 +374,77 @@ class Records:
                         self.__products.append(product)
                         self.set_next_product_number(self.get_next_customer_number() + 1)
                 break
-            except InvalidPrescriptionError as e:
+            except InvalidPrescriptionException as e:
                 print(e)
-            except InvalidProductInfoFormetError as e:
+            except InvalidProductInfoFormetException as e:
                 print(e)
-            except InvalidPriceError as e:
+            except InvalidPriceException as e:
                 print(e)
 
-class InvalidNameError(Exception):
+    def write_customers(self, customers_filename):
+        f = open(customers_filename, "w")
+        customers_data = ''
+        for customer_data in self.__customers:
+            customers_data += customer_data.write_info() + '\n'
+        f.write(customers_data)
+        f.close()
+
+    def write_products(self, products_filename):
+        f = open(products_filename, "w")
+        products_data = ''
+        for product_data in self.__products:
+            products_data += product_data.write_info() + '\n'
+        f.write(products_data)
+        f.close()
+
+    def write_orders(self, orders_filename):
+        f = open(orders_filename, "w")
+        orders_data = ''
+        for order_data in self.__orders:
+            orders_data += order_data.write_info() + '\n'
+        f.write(orders_data)
+        f.close()
+
+class InvalidNameException(Exception):
     pass
 
-class InvalidProductError(Exception):
+class InvalidProductException(Exception):
     pass
 
-class InvalidVIPCustomerError(Exception):
+class InvalidVIPCustomerException(Exception):
     pass
 
-class InvalidQuantityError(Exception):
+class InvalidQuantityException(Exception):
     pass
 
-class InvalidPrescriptionError(Exception):
+class InvalidPrescriptionException(Exception):
     pass
 
-class InvalidQuantitiesError(Exception):
+class InvalidQuantitiesException(Exception):
     pass
 
-class NoPrescriptionError(Exception):
+class NoPrescriptionException(Exception):
     pass
 
-class InvalidProductInfoFormetError(Exception):
+class InvalidProductInfoFormetException(Exception):
     pass
 
-class InvalidPriceError(Exception):
+class InvalidPriceException(Exception):
     pass
 
-class InvalidRewardRateError(Exception):
+class InvalidRewardRateException(Exception):
     pass
 
 class Operations:
     validations = Validations()
-    def __init__(self):
+    def __init__(self, customers_filename, products_filename, orders_filename):
         self.records = Records()
-        self.records.read_customers('customers.txt')
-        self.records.read_products('products.txt')
+        self.__customer_filename = customers_filename
+        self.records.read_customers(customers_filename)
+        self.__products_filename = products_filename
+        self.records.read_products(products_filename)
+        self.__orders_filename = orders_filename
+        self.records.read_orders(orders_filename)
 
     def display_menu(self):
         while True:
@@ -362,8 +455,9 @@ class Operations:
             print("4. Add/update products")
             print("5. Adjust the reward rate of all Basic customers")
             print("6. Adjust the discount rate of a VIP customer")
-            print("7. Display customer order history")
-            print("8. Exit the program")
+            print("7. Display all orders")
+            print("8. Display a customer order history")
+            print("9. Exit the program")
             choice = input("Enter your choice: ")
 
             if choice == '1':
@@ -379,8 +473,12 @@ class Operations:
             elif choice == '6':
                 self.adjust_the_discount_rate()
             elif choice == '7':
-                print("Exiting the program...")
-                break
+                self.list_orders()
+            elif choice == '8':
+                self.list_customer_orders()
+            elif choice == '9':
+                self.update_files(self.__customer_filename, self.__products_filename, self.__orders_filename)
+                sys.exit()
             else:
                 print("Invalid choice. Please try again.")
 
@@ -399,7 +497,6 @@ class Operations:
                 self.records.customers.append(customer)
             else:
                 print(f"Existing customer: {customer_name}. Type: {'VIP' if isinstance(customer, VIPCustomer) else 'Basic'}")
-
 
             order = Order(customer, product_List, quantity_list)
             original_cost, discount, final_cost, reward, reward_discount = order.compute_cost()
@@ -433,17 +530,17 @@ class Operations:
                     print(f"Reward discount: {reward_discount}")
                     print(f"Total after reward discount: {final_cost}")
     
-        except InvalidNameError as e:
+        except InvalidNameException as e:
             print(e)
-        except InvalidProductError as e:
+        except InvalidProductException as e:
             print(e)
-        except InvalidQuantityError as e:
+        except InvalidQuantityException as e:
             print(e)
-        except InvalidPrescriptionError as e:
+        except InvalidPrescriptionException as e:
             print(e)
-        except InvalidQuantitiesError as e:
+        except InvalidQuantitiesException as e:
             print(e)
-        except NoPrescriptionError as e:
+        except NoPrescriptionException as e:
             print(e)
 
     def list_customers(self):
@@ -462,15 +559,15 @@ class Operations:
 
             try:
                 if (number_of_products != len(quantity_list)):
-                    raise InvalidQuantitiesError("\nError: Number of products and quantities should be the same. Re Enter the quantities.\n\n")
+                    raise InvalidQuantitiesException("\nException: Number of products and quantities should be the same. Re Enter the quantities.\n\n")
             
                 for quantity in quantity_list:
                     if not quantity.isdigit() or int(quantity) <= 0:
-                        raise InvalidQuantityError("Quantity must be a positive integer.")
+                        raise InvalidQuantityException("Quantity must be a positive integer.")
                     final_quantity_list.append(int(quantity))
-            except InvalidQuantityError as e:
+            except InvalidQuantityException as e:
                 print(e)
-            except InvalidQuantitiesError as e:
+            except InvalidQuantitiesException as e:
                 print(e)
             return final_quantity_list
         
@@ -480,7 +577,7 @@ class Operations:
                 customer_name = input("Enter customer name: ")
                 Validations.validate_customer_name(customer_name)
                 return customer_name
-            except InvalidNameError as e:
+            except InvalidNameException as e:
                 print(e)
 
     def read_product_list(self):
@@ -493,27 +590,27 @@ class Operations:
                 for product_name in product_name_list:
                     product = self.records.find_product(product_name)
                     if (product == None):
-                        raise InvalidProductError("Invalid product. Enter the products again")
+                        raise InvalidProductException("Invalid product. Enter the products again")
                     if product.dr_prescription == 'y':
                         while True:
                             try:
                                 prescription = input(f"Do you have a doctor's prescription for {product_name}? (y/n): ").lower()
                                 Validations.validate_prescription_status(prescription)
                                 if prescription == 'n':
-                                    raise NoPrescriptionError(f"You cannot purchase this product {product_name} without a doctor's prescription.")
+                                    raise NoPrescriptionException(f"You cannot purchase this product {product_name} without a doctor's prescription.")
                                 else:
                                     product_List.append(product)
                                     break
-                            except InvalidPrescriptionError as e:
+                            except InvalidPrescriptionException as e:
                                 print(e)
-                            except NoPrescriptionError as e:
+                            except NoPrescriptionException as e:
                                 print(e)
                                 break
                     else:
                         product_List.append(product)
 
                 return product_List
-            except InvalidProductError as e:
+            except InvalidProductException as e:
                 print(e)
 
     def adjust_the_reward_rate(self):
@@ -523,7 +620,7 @@ class Operations:
                 Validations.validate_reward_rate(reward_rate)
                 BasicCustomer.set_reward_rate(reward_rate)
                 break
-            except InvalidRewardRateError as e:
+            except InvalidRewardRateException as e:
                 print(e)
 
     def adjust_the_discount_rate(self):
@@ -533,7 +630,7 @@ class Operations:
                 customer_obj = self.records.find_customer(customer)
                 Validations.validate_VIP_customer(customer_obj)
                 break
-            except InvalidVIPCustomerError as e:
+            except InvalidVIPCustomerException as e:
                 print(e)
         while True:
             try:
@@ -541,8 +638,48 @@ class Operations:
                 Validations.validate_discount_rate(discount_rate)
                 customer_obj.set_discount_rate(discount_rate)
                 break
-            except InvalidRewardRateError as e:
+            except InvalidRewardRateException as e:
                 print(e)
 
-operations = Operations()
-operations.display_menu()
+    def list_orders(self):
+        for order in self.records.orders:
+            order.display_info()
+
+    def list_customer_orders(self):
+        while True:
+            try:
+                customer_name = input("Enter customer name: ")
+                customer = self.records.find_customer(customer_name)
+                for order in self.records.orders:
+                    if (order.customer.name == customer.name):
+                        order.display_info()
+                break
+            except Exception as e:
+                print(e)
+
+    def update_files(self, customers_filename, products_filename, orders_filename):
+        self.records.write_customers(customers_filename)
+        self.records.write_products(products_filename)
+        self.records.write_orders(orders_filename)
+
+customers_filename = input("Enter customer filename: ")
+products_filename = input("Enter products filename: ")
+is_order_filename = ''
+while True:
+    is_order_filename = input("Do you want to enter orders filename (y, n):")
+    if (is_order_filename .lower() in ['y', 'n']):
+        break
+    else:
+        print('Invalid input. Enter a valid input. (y-Yes, n-No)')
+if (is_order_filename.lower() == 'y'):
+    orders_filename = input("Enter orders filename: ")
+else:
+    orders_filename = 'orders.txt'
+
+try:
+    # operations = Operations('customers.txt', 'products.txt', 'orders.txt')
+    operations = Operations(customers_filename, products_filename, orders_filename)
+    operations.display_menu()
+except FileNotFoundError as e:
+    print(e)
+    sys.exit()
