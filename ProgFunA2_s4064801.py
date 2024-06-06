@@ -1,6 +1,12 @@
 # ProgFunA2_s4064801.py
 # Author: Jayaweera Patabandige Binith Achintha Jayasinghe
 # Student ID: 4064801
+# git: https://github.com/jpbinith/COSC2531_Assignment_2
+# Highest level: HD
+
+# In HD level question 4 I assumed that customers file and product file are mandatory and order file is optional.
+# In the order file assumend all the users and products are valid.
+# In product file if the product is invalid an exceprion will ouccur and application will be exit.
 
 import sys
 from datetime import datetime
@@ -61,6 +67,7 @@ class BasicCustomer(Customer):
     def display_info(self):
         print(f"ID: {self.ID}, Name: {self.name}, Reward: {self.reward}, Reward Rate: {self.__reward_rate}")
 
+    # This method used to format class details before saving to the file
     def write_info(self):
         return f'{self.ID}, {self.name}, {self.__reward_rate}, {str(self.reward)}'
 
@@ -89,6 +96,7 @@ class VIPCustomer(Customer):
     def display_info(self):
         print(f"ID: {self.ID}, Name: {self.name}, Reward: {self.reward}, Reward Rate: {self.__reward_rate}, Discount Rate: {self.__discount_rate}")
     
+    # This method used to format class details before saving to the file
     def write_info(self):
         return f'{self.ID}, {self.name}, {self.__reward_rate}, {self.__discount_rate}, {str(self.reward)}'
     
@@ -137,6 +145,7 @@ class Product:
     def display_info(self):
         print(f"ID: {self.ID}, Name: {self.name}, Price: {self.price} AUD, Doctor's Prescription: {self.dr_prescription}")
 
+    # This method used to format class details before saving to the file
     def write_info(self):
         return f'{self.ID}, {self.name}, {self.price}, {self.dr_prescription}'
 
@@ -154,6 +163,7 @@ class Bundle(Product):
         product_names = ", ".join(p.name for p in self.__products)
         print(f"ID: {self.ID}, Name: {self.name}, Price: {self.__price} AUD, Doctor's Prescription: {self.dr_prescription}, Products: {product_names}")
 
+    # This method used to format class details before saving to the file
     def write_info(self):
         products = ''
         for product in self.__products:
@@ -174,6 +184,7 @@ class Order:
     def customer(self):
         return self.__customer
     
+    # Calculate order cost
     def compute_cost(self):
         original_cost = sum( product.price * quantity for product, quantity in zip(self.__product_list, self.__quantity_list))
         reward = self.__customer.get_reward(original_cost)
@@ -201,12 +212,14 @@ class Order:
             products_str += f'{product} x {quantity}, ' 
         print(f"Customer: {self.__customer.name},   Products: { products_str }  Total cost: {self.__total_cost},   Earned rewards: {self.__earned_rewards},   Date: {self.__date}")
 
+    # This method used to format class details before saving to the file
     def write_info(self):
         products_str = ''
         for product, quantity in zip(self.__product_list, self.__quantity_list):
             products_str += f'{product}, {str(quantity)}, ' 
         return f'{self.__customer.name}, {products_str}{self.__total_cost}, {self.__earned_rewards}, {self.__date}'
     
+# Validation class (All the validation related functions done in this class)
 class Validations:
 
     @staticmethod
@@ -257,8 +270,9 @@ class Validations:
         except ValueException:
             raise InvalidRewardRateException(f"Invalid discount rate {discount_rate}. Enter a valid discount rate.")
 
+# Utill class (Utill functions added to this class)
 class Utill:
-
+    # This method used to pair neighbour elements in a array
     @staticmethod
     def pairwise(iterable):
         a = iter(iterable)
@@ -301,6 +315,7 @@ class Records:
     def orders(self):
         return self.__orders
     
+    # This method used to read customers from the file
     def read_customers(self, filename):
         with open(filename, 'r') as file:
             for line in file:
@@ -312,6 +327,7 @@ class Records:
                     customer = VIPCustomer(data[0], data[1], int(data[4]), float(data[3]))
                 self.__customers.append(customer)
 
+    # This method used to read products from the file
     def read_products(self, filename):
         with open(filename, 'r') as file:
             for line in file:
@@ -331,6 +347,7 @@ class Records:
                     product = Product(data[0], data[1], float(data[2]), data[3])
                 self.__products.append(product)
     
+    # This method used to read orders from the file
     def read_orders(self, filename):
         with open(filename, 'r') as file:
             for line in file:
@@ -356,6 +373,7 @@ class Records:
             if product.ID == search_value or product.name == search_value:
                 return product
     
+    # Add or remove products
     def add_update_products(self):
         while True:
             try:
@@ -366,10 +384,13 @@ class Records:
                     Validations.validate_price(product_info_list[1])
                     Validations.validate_prescription_status(product_info_list[2])
                     product = self.find_product(product_info_list[0])
+                    # Checking existing product or not
                     if (product != None):
+                        # is existing product update it
                         product.price = product_info_list[1]
                         product.dr_prescription = product_info_list[2]
                     else:
+                        # if a new product create new one
                         product = Product("P" + str(self.get_next_product_number()), product_info_list[0], product_info_list[1], product_info_list[2])
                         self.__products.append(product)
                         self.set_next_product_number(self.get_next_customer_number() + 1)
@@ -381,6 +402,7 @@ class Records:
             except InvalidPriceException as e:
                 print(e)
 
+    # Write customer details to the file
     def write_customers(self, customers_filename):
         f = open(customers_filename, "w")
         customers_data = ''
@@ -389,6 +411,7 @@ class Records:
         f.write(customers_data)
         f.close()
 
+    # Write product details to the file
     def write_products(self, products_filename):
         f = open(products_filename, "w")
         products_data = ''
@@ -397,6 +420,7 @@ class Records:
         f.write(products_data)
         f.close()
 
+    # # Write order details to the file
     def write_orders(self, orders_filename):
         f = open(orders_filename, "w")
         orders_data = ''
@@ -405,6 +429,8 @@ class Records:
         f.write(orders_data)
         f.close()
 
+
+# Custom Exception classes
 class InvalidNameException(Exception):
     pass
 
@@ -436,7 +462,7 @@ class InvalidRewardRateException(Exception):
     pass
 
 class Operations:
-    validations = Validations()
+    
     def __init__(self, customers_filename, products_filename, orders_filename):
         self.records = Records()
         self.__customer_filename = customers_filename
@@ -446,6 +472,7 @@ class Operations:
         self.__orders_filename = orders_filename
         self.records.read_orders(orders_filename)
 
+    # display menu
     def display_menu(self):
         while True:
             print("\nMenu:")
@@ -482,25 +509,32 @@ class Operations:
             else:
                 print("Invalid choice. Please try again.")
 
+    # make purchase
     def make_purchase(self):
         try:
+            # read customer name
             customer_name = self.read_customer_name()
+            # read product list
             product_List = self.read_product_list()
-            
+            # read quantity list
             quantity_list = self.read_quantity_list(len(product_List))
-
+            # find existing customer or not
             customer = self.records.find_customer(customer_name)
+            # if not an existing customer create a new customer
             if customer is None:
                 print(f"New customer: {customer_name}. Registering as Basic Customer.")
                 customer = BasicCustomer("B" + str(self.records.get_next_customer_number()), customer_name, 0)
                 self.records.set_next_customer_number(self.records.get_next_customer_number() + 1)
                 self.records.customers.append(customer)
-            else:
-                print(f"Existing customer: {customer_name}. Type: {'VIP' if isinstance(customer, VIPCustomer) else 'Basic'}")
+            # else:
+            #     print(f"Existing customer: {customer_name}. Type: {'VIP' if isinstance(customer, VIPCustomer) else 'Basic'}")
 
+            # create order instance
             order = Order(customer, product_List, quantity_list)
+            # calculate order cost
             original_cost, discount, final_cost, reward, reward_discount = order.compute_cost()
 
+            # Print receipt
             if isinstance(customer, VIPCustomer):
                 print("\n------------------------------ Receipt ------------------------------")
                 print(f"Name: {customer_name}")
@@ -543,14 +577,17 @@ class Operations:
         except NoPrescriptionException as e:
             print(e)
 
+    # Print all customers
     def list_customers(self):
         for customer in self.records.customers:
             customer.display_info()
 
+    # Print all products
     def list_products(self):
         for product in self.records.products:
             product.display_info()
 
+    # read quantity list and validate
     def read_quantity_list(self, number_of_products):
         while True:
             final_quantity_list = []
@@ -571,6 +608,7 @@ class Operations:
                 print(e)
             return final_quantity_list
         
+    # read customer name and validate
     def read_customer_name(self):
         while True:
             try:
@@ -580,6 +618,7 @@ class Operations:
             except InvalidNameException as e:
                 print(e)
 
+    # read product list and validate
     def read_product_list(self):
         while True:
             try:
@@ -613,6 +652,7 @@ class Operations:
             except InvalidProductException as e:
                 print(e)
 
+    # set reward rate for all basic customers
     def adjust_the_reward_rate(self):
         while True:
             try:
@@ -623,6 +663,7 @@ class Operations:
             except InvalidRewardRateException as e:
                 print(e)
 
+    # set discount rate of a specific VIP customer
     def adjust_the_discount_rate(self):
         while True:
             try:
@@ -641,10 +682,12 @@ class Operations:
             except InvalidRewardRateException as e:
                 print(e)
 
+    # print all orders
     def list_orders(self):
         for order in self.records.orders:
             order.display_info()
 
+    # print order history of a customer
     def list_customer_orders(self):
         while True:
             try:
@@ -662,8 +705,10 @@ class Operations:
         self.records.write_products(products_filename)
         self.records.write_orders(orders_filename)
 
+# read file names
 customers_filename = input("Enter customer filename: ")
 products_filename = input("Enter products filename: ")
+# check for optional order filename and read if needed
 is_order_filename = ''
 while True:
     is_order_filename = input("Do you want to enter orders filename (y, n):")
